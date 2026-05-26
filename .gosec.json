@@ -1,0 +1,5 @@
+{
+  "severity": "medium",
+  "confidence": "medium",
+  "exclude": ["G104", "G114"]
+}

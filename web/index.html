@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Шлюз обмена 1С ↔ внешние системы</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --border: #2d3a4d;
+      --text: #e8eef7;
+      --muted: #8b9cb3;
+      --accent: #3d8bfd;
+      --accent-dim: #2563c2;
+      --ok: #34d399;
+      --err: #f87171;
+      --radius: 10px;
+      --font: "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      background: radial-gradient(1200px 600px at 10% -10%, #1e3a5f 0%, transparent 50%), var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(26, 35, 50, 0.85);
+      backdrop-filter: blur(8px);
+    }
+    header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; }
+    header p { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.875rem; }
+    main { max-width: 880px; margin: 0 auto; padding: 1.5rem; }
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .tabs button {
+      flex: 1;
+      padding: 0.65rem 1rem;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--muted);
+      border-radius: var(--radius);
+      cursor: pointer;
+      font: inherit;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+    .tabs button:hover { color: var(--text); border-color: var(--accent-dim); }
+    .tabs button.active {
+      color: var(--text);
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #243044 0%, var(--panel) 100%);
+      box-shadow: 0 0 0 1px rgba(61, 139, 253, 0.25);
+    }
+    .panel {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      background: var(--panel);
+    }
+    .panel.visible { display: block; }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.35rem; }
+    select, input[type="file"] {
+      width: 100%;
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #121a26;
+      color: var(--text);
+      font: inherit;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+    button.primary {
+      padding: 0.65rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      font: inherit;
+    }
+    button.primary:hover { background: var(--accent-dim); }
+    button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg { margin-top: 1rem; padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.875rem; display: none; }
+    .msg.ok { display: block; background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.35); color: var(--ok); }
+    .msg.err { display: block; background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.35); color: var(--err); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; }
+    a.link { color: var(--accent); text-decoration: none; }
+    a.link:hover { text-decoration: underline; }
+    .hint { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; line-height: 1.45; }
+    code { background: #121a26; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Обмен данными (HTTP, версия API v1)</h1>
+    <p>Шлюз на Go, трансформации JSON / XML / SOAP — сервис на Python. Логи запросов — в консоли сервера Go.</p>
+  </header>
+  <main>
+    <div class="tabs">
+      <button type="button" class="active" data-tab="send">Отправить файл</button>
+      <button type="button" data-tab="recv">Принятые файлы</button>
+    </div>
+
+    <section id="panel-send" class="panel visible">
+      <form id="form-send">
+        <label for="file">Файл (JSON, XML или SOAP)</label>
+        <input type="file" id="file" name="file" required />
+
+        <div class="row">
+          <div>
+            <label for="format">Формат содержимого</label>
+            <select id="format" name="format">
+              <option value="json">JSON</option>
+              <option value="xml">XML</option>
+              <option value="soap">SOAP</option>
+            </select>
+          </div>
+          <div>
+            <label for="transform_to">Сохранить как (опционально, через Python)</label>
+            <select id="transform_to" name="transform_to">
+              <option value="">Без преобразования</option>
+              <option value="json">JSON</option>
+              <option value="xml">XML</option>
+              <option value="soap">SOAP</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="primary" id="btn-send">Отправить</button>
+        <div id="send-msg" class="msg"></div>
+        <p class="hint">
+          HTTP для вызова из 1С: <code>POST /api/v1/send</code> (multipart: поле <code>file</code>, <code>format</code>, опционально <code>transform_to</code>).
+          Заголовок ответа с версией: <code>X-API-Version: v1</code>.
+        </p>
+      </form>
+    </section>
+
+    <section id="panel-recv" class="panel">
+      <p style="margin-top:0;color:var(--muted);font-size:0.875rem;">Список обновляется при открытии вкладки.</p>
+      <button type="button" class="primary" id="btn-refresh">Обновить список</button>
+      <div id="recv-msg" class="msg"></div>
+      <div style="overflow-x:auto;margin-top:1rem;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Формат</th>
+              <th>Файл</th>
+              <th>Размер</th>
+              <th>Время (UTC)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="recv-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API = "/api/v1";
+
+    function showMsg(el, text, ok) {
+      el.className = "msg " + (ok ? "ok" : "err");
+      el.textContent = text;
+    }
+
+    document.querySelectorAll(".tabs button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const tab = btn.dataset.tab;
+        document.querySelectorAll(".panel").forEach((p) => p.classList.remove("visible"));
+        document.getElementById("panel-" + tab).classList.add("visible");
+        if (tab === "recv") loadReceived();
+      });
+    });
+
+    document.getElementById("form-send").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById("send-msg");
+      msg.className = "msg";
+      const fd = new FormData();
+      const file = document.getElementById("file").files[0];
+      if (!file) {
+        showMsg(msg, "Выберите файл", false);
+        return;
+      }
+      fd.append("file", file);
+      fd.append("format", document.getElementById("format").value);
+      const tt = document.getElementById("transform_to").value;
+      if (tt) fd.append("transform_to", tt);
+      const btn = document.getElementById("btn-send");
+      btn.disabled = true;
+      try {
+        const res = await fetch(API + "/send", { method: "POST", body: fd });
+        const ver = res.headers.get("X-API-Version");
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(t || res.statusText);
+        }
+        const data = await res.json();
+        showMsg(msg, "Сохранено: id=" + data.id + (ver ? ", API " + ver : ""), true);
+      } catch (err) {
+        showMsg(msg, String(err.message || err), false);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    async function loadReceived() {
+      const tbody = document.getElementById("recv-body");
+      const msg = document.getElementById("recv-msg");
+      msg.className = "msg";
+      tbody.innerHTML = "";
+      try {
+        const res = await fetch(API + "/received");
+        if (!res.ok) throw new Error(await res.text());
+        const list = await res.json();
+        if (!list.length) {
+          tbody.innerHTML = "<tr><td colspan=\"6\" style=\"color:var(--muted)\">Пока нет записей</td></tr>";
+          return;
+        }
+        for (const r of list) {
+          const tr = document.createElement("tr");
+          const dl = API + "/received/" + encodeURIComponent(r.id) + "/download";
+          tr.innerHTML =
+            "<td><code>" + r.id + "</code></td>" +
+            "<td>" + r.format + "</td>" +
+            "<td>" + escapeHtml(r.filename) + "</td>" +
+            "<td>" + r.size_bytes + "</td>" +
+            "<td>" + escapeHtml(r.created_at) + "</td>" +
+            "<td><a class=\"link\" href=\"" + dl + "\">скачать</a></td>";
+          tbody.appendChild(tr);
+        }
+      } catch (err) {
+        showMsg(msg, String(err.message || err), false);
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    document.getElementById("btn-refresh").addEventListener("click", loadReceived);
+  </script>
+</body>
+</html>

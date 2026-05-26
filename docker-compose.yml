@@ -1,0 +1,30 @@
+services:
+  transform:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  gateway:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      HTTP_ADDR: ":8080"
+      PYTHON_TRANSFORM_URL: "http://transform:5000"
+      DATA_DIR: "/data"
+    volumes:
+      - gateway-data:/data
+    depends_on:
+      transform:
+        condition: service_healthy
+
+volumes:
+  gateway-data:

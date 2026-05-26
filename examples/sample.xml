@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<order id="ПТУ-00001" date="2026-05-12">
+  <sum>12500.5</sum>
+  <item name="Товар А" qty="2"/>
+  <item name="Товар Б" qty="1"/>
+</order>

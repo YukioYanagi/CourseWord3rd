@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>
+    <order id="ПТУ-00001" date="2026-05-12">
+      <sum>12500.5</sum>
+    </order>
+  </s:Body>
+</s:Envelope>

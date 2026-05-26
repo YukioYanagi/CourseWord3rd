@@ -1,0 +1,5 @@
+[package]
+name = "ci-skeleton"
+version = "0.1.0"
+edition = "2021"
+description = "Minimal crate so CI can run cargo test (основной код — Go/Python)."

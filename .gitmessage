@@ -1,0 +1,12 @@
+# <тип>(<область>): <кратко, до ~72 символов>
+#
+# Типы: feat fix docs style refactor test chore ci perf build
+#
+# Примеры:
+#   feat(gateway): add health endpoint
+#   fix(python): handle empty SOAP body
+#   docs: update README for docker compose
+#
+# Тело (опционально):
+# - Что изменено и зачем.
+# - BREAKING CHANGE: описание, если ломается API.
